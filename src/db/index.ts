@@ -5,7 +5,10 @@ import * as schema from './schema'
 const globalForDb = globalThis as unknown as { _db: ReturnType<typeof drizzle> | undefined }
 
 function createDb() {
-  const url = process.env.DATABASE_URL || 'file:./dev.db'
+  // On Vercel: use file in /tmp (writable, persists within a function execution)
+  // Locally: use ./dev.db
+  const url = process.env.DATABASE_URL || 
+    (process.env.VERCEL ? 'file:/tmp/talabat.db' : 'file:./dev.db')
   const client = createClient({ url })
   return drizzle(client, { schema })
 }

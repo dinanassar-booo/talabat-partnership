@@ -1,10 +1,3 @@
 import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@libsql/client'],
-    
-  },
-}
-
+const nextConfig: NextConfig = {}
 export default nextConfig

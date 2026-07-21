@@ -5,7 +5,8 @@ import * as schema from './schema'
 const globalForDb = globalThis as unknown as { _db: ReturnType<typeof drizzle> | undefined }
 
 function createDb() {
-  const client = createClient({ url: 'file:./dev.db' })
+  const url = process.env.DATABASE_URL || 'file:./dev.db'
+  const client = createClient({ url })
   return drizzle(client, { schema })
 }
 

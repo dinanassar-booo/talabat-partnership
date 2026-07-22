@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/db'
+import { ensureDb } from '@/db/ensure-db'
 import { hashPassword, signToken, COOKIE_NAME } from '@/lib/auth'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
+  await ensureDb()
   const { companyName, tradeNumber, country, industry, adminName, adminEmail, password, tcAccepted } = await req.json()
   if (!companyName || !tradeNumber || !adminEmail || !password || !adminName) return NextResponse.json({ error: 'All fields required' }, { status: 400 })
   if (!tcAccepted) return NextResponse.json({ error: 'You must accept the terms' }, { status: 400 })

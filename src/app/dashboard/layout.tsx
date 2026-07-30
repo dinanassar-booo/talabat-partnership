@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -17,7 +18,15 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
+const router = useRouter()
+const [companyName, setCompanyName] = useState('...')
+useEffect(() => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.companyName) setCompanyName(d.companyName) })
+}, [])
+const [companyName, setCompanyName] = useState('...')
+useEffect(() => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.companyName) setCompanyName(d.companyName) })
+}, [])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })

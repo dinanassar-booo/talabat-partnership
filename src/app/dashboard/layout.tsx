@@ -17,12 +17,8 @@ const navItems = [
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+const pathname = usePathname()
 const router = useRouter()
-const [companyName, setCompanyName] = useState('...')
-useEffect(() => {
-  fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.companyName) setCompanyName(d.companyName) })
-}, [])
 const [companyName, setCompanyName] = useState('...')
 useEffect(() => {
   fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.companyName) setCompanyName(d.companyName) })

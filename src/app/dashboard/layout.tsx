@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: 'flex', flexDirection: 'column'
         }}>
           <div style={{ padding: '0 16px 16px' }}>
-            <div style={{ fontWeight: 500, fontSize: 13 }}>Emirates Group</div>
+            <div style={{ fontWeight: 500, fontSize: 13 }}>{companyName}</div>
             <div style={{ fontSize: 11, color: '#888' }}>Active partner</div>
           </div>
 

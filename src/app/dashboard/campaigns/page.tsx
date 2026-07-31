@@ -1,17 +1,48 @@
-import { getSession } from '@/lib/auth'
-import { getDb } from '@/db'
-import { redirect } from 'next/navigation'
+'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, BarChart2 } from 'lucide-react'
 
-export default async function CampaignsPage() {
-  const session = await getSession()
-  if (!session) redirect('/login')
-  const sql = getDb()
-  const rows = await sql`SELECT c.*, bt.name as benefit_name FROM campaigns c JOIN benefit_types bt ON c.benefit_type_id = bt.id WHERE c.partner_id = ${session.id} ORDER BY c.created_at DESC`
+type Campaign = {
+  id: string; name: string; benefit_name: string; benefit_slug: string
+  headcount: number; credit_value: number; cycle_type: string
+  budget_used: number; budget_total: number; status: string
+  min_order_value: number; validity_days: number
+}
 
-  const totalGmv = rows.reduce((s: number, r: Record<string, unknown>) => s + Number(r.budget_used), 0)
-  const totalBudget = rows.reduce((s: number, r: Record<string, unknown>) => s + Number(r.budget_total), 0)
+export default function CampaignsPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [launching, setLaunching] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => { loadCampaigns() }, [])
+
+  async function loadCampaigns() {
+    const res = await fetch('/api/campaigns')
+    const data = await res.json()
+    setCampaigns(data.campaigns || [])
+  }
+
+  async function handleLaunch(campaignId: string) {
+    setLaunching(campaignId); setError(''); setSuccess('')
+    const res = await fetch('/api/campaigns/launch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaignId })
+    })
+    const data = await res.json()
+    setLaunching(null)
+    if (!res.ok) {
+      setError(data.error || 'Failed to launch campaign')
+    } else {
+      setSuccess(`Campaign launched — ${data.employeesReached} employees reached via Braze`)
+      loadCampaigns()
+    }
+  }
+
+  const totalGmv = campaigns.reduce((s, c) => s + Number(c.budget_used), 0)
+  const totalBudget = campaigns.reduce((s, c) => s + Number(c.budget_total), 0)
 
   return (
     <div>
@@ -20,12 +51,16 @@ export default async function CampaignsPage() {
           <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>Campaigns</h1>
           <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0' }}>Track all benefit campaigns across your employee base.</p>
         </div>
-        <Link href="/dashboard/benefits"><button className="btn-tlb"><Plus size={14} /> New campaign</button></Link>
+        <Link href="/dashboard/campaigns/new"><button className="btn-tlb"><Plus size={14} /> New campaign</button></Link>
       </div>
-      {rows.length > 0 && (
+
+      {error && <div style={{ color: '#A32D2D', background: '#FCEBEB', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{error}</div>}
+      {success && <div style={{ color: '#3B6D11', background: '#EDF7E6', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{success}</div>}
+
+      {campaigns.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
           {[
-            { label: 'Total campaigns', value: rows.length },
+            { label: 'Total campaigns', value: campaigns.length },
             { label: 'Total budget', value: `AED ${Math.round(totalBudget).toLocaleString()}` },
             { label: 'Total GMV generated', value: `AED ${Math.round(totalGmv).toLocaleString()}` },
           ].map(m => (
@@ -36,26 +71,27 @@ export default async function CampaignsPage() {
           ))}
         </div>
       )}
-      {rows.length === 0 ? (
+
+      {campaigns.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <BarChart2 size={32} color="#d1d0c9" style={{ margin: '0 auto 12px' }} />
           <div style={{ fontWeight: 500, marginBottom: 6 }}>No campaigns yet</div>
-          <Link href="/dashboard/benefits"><button className="btn-tlb"><Plus size={14} /> Set up a benefit</button></Link>
+          <Link href="/dashboard/campaigns/new"><button className="btn-tlb"><Plus size={14} /> Set up a benefit</button></Link>
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead><tr>{['Campaign','Benefit','Employees','Credit/cycle','Budget used','Status'].map(h => (
+            <thead><tr>{['Campaign', 'Benefit', 'Employees', 'Credit/cycle', 'Budget used', 'Status', ''].map(h => (
               <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '0.5px solid #e0dfd7' }}>{h}</th>
             ))}</tr></thead>
-            <tbody>{rows.map((c: Record<string, unknown>) => {
+            <tbody>{campaigns.map(c => {
               const pct = Number(c.budget_total) > 0 ? Math.round((Number(c.budget_used) / Number(c.budget_total)) * 100) : 0
               return (
-                <tr key={c.id as string} style={{ borderBottom: '0.5px solid #f0efe7' }}>
-                  <td style={{ padding: '13px 16px', fontWeight: 500 }}>{c.name as string}</td>
-                  <td style={{ padding: '13px 16px' }}><span className="badge badge-orange">{c.benefit_name as string}</span></td>
+                <tr key={c.id} style={{ borderBottom: '0.5px solid #f0efe7' }}>
+                  <td style={{ padding: '13px 16px', fontWeight: 500 }}>{c.name}</td>
+                  <td style={{ padding: '13px 16px' }}><span className="badge badge-orange">{c.benefit_name}</span></td>
                   <td style={{ padding: '13px 16px', color: '#5f5e5a' }}>{Number(c.headcount).toLocaleString()}</td>
-                  <td style={{ padding: '13px 16px', color: '#5f5e5a' }}>AED {Number(c.credit_value)} / {(c.cycle_type as string).replace('_',' ')}</td>
+                  <td style={{ padding: '13px 16px', color: '#5f5e5a' }}>AED {Number(c.credit_value)} / {c.cycle_type.replace('_', ' ')}</td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ flex: 1, height: 4, background: '#e0dfd7', borderRadius: 2 }}>
@@ -65,7 +101,31 @@ export default async function CampaignsPage() {
                     </div>
                     <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>AED {Math.round(Number(c.budget_used)).toLocaleString()} / {Math.round(Number(c.budget_total)).toLocaleString()}</div>
                   </td>
-                  <td style={{ padding: '13px 16px' }}><span className={`badge badge-${c.status}`}>{c.status as string}</span></td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 4,
+                      background: c.status === 'active' ? '#EDF7E6' : c.status === 'paused' ? '#FEF3CD' : '#F0EFE9',
+                      color: c.status === 'active' ? '#3B6D11' : c.status === 'paused' ? '#7A5C00' : '#5f5e5a'
+                    }}>{c.status}</span>
+                  </td>
+                  <td style={{ padding: '13px 16px' }}>
+                    {c.status === 'pending' && (
+                      <button
+                        className="btn-tlb"
+                        style={{ fontSize: 12, padding: '5px 12px' }}
+                        disabled={launching === c.id}
+                        onClick={() => handleLaunch(c.id)}
+                      >
+                        {launching === c.id ? 'Launching…' : 'Launch →'}
+                      </button>
+                    )}
+                    {c.status === 'active' && (
+                      <span style={{ fontSize: 12, color: '#3B6D11' }}>● Live</span>
+                    )}
+                    {c.status === 'paused' && (
+                      <span style={{ fontSize: 12, color: '#7A5C00' }}>⚠ Paused</span>
+                    )}
+                  </td>
                 </tr>
               )
             })}</tbody>

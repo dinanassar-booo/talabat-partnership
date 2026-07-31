@@ -97,8 +97,11 @@ export async function triggerVoucherWalletCampaign(params: {
   const titleAr = `قسيمة بقيمة ${creditValue} درهم من صاحب العمل`
 
   const recipients = emails.map(email => ({
-  email,
-}))
+    user_alias: {
+      alias_name: email,
+      alias_label: 'email',
+    },
+  }))
 
   const body = {
     canvas_id: VOUCHER_WALLET_CANVAS_ID,

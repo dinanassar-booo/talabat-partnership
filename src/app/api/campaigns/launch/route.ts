@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active employees found. Please upload your employee list first.' }, { status: 400 })
   }
 
-  const emails = employees.map((e: Record<string, unknown>) => e.email as string)
-
+const emails = ['27608673'] 
+  
   const brazeResult = await triggerVoucherWalletCampaign({
     emails,
     campaignId: campaign.id,

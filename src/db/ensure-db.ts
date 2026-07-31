@@ -82,7 +82,16 @@ export async function ensureDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+// Add new columns to existing tables (safe — IF NOT EXISTS)
+  await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT`
+  await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS discount_type TEXT NOT NULL DEFAULT 'FLAT'`
+  await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_order_value NUMERIC NOT NULL DEFAULT 30`
+  await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS validity_days INTEGER NOT NULL DEFAULT 7`
+  await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS next_send_at TIMESTAMPTZ`
 
+  // Update voucher wallet canvas ID
+  await sql`UPDATE benefit_types SET braze_canvas_id = '91e0ba33-7878-45a9-aa62-bcc9b1437a44' WHERE slug = 'voucher_wallet'`
+  
   // Seed benefit types
   const seeds = [
     { id: 'bt_voucher', slug: 'voucher_wallet', name: 'Voucher wallet', description: 'Recurring credit loaded automatically each cycle. Employees spend across all talabat categories.', brazeCanvasId: 'CANVAS_VOUCHER_WALLET_MASTER' },

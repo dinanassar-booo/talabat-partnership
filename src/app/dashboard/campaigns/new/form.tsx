@@ -16,9 +16,12 @@ export default function NewCampaignForm() {
     benefitTypeId: params.get('benefit') || '',
     name: '',
     creditValue: '100',
-    cycleType: 'weekly',
+    cycleType: 'monthly',
     headcount: '',
     budgetTotal: '',
+    minOrderValue: '30',
+    validityDays: '7',
+    startDate: new Date().toISOString().slice(0, 10),
   })
 
   useEffect(() => {
@@ -32,7 +35,8 @@ export default function NewCampaignForm() {
     const h = parseInt(form.headcount) || 0
     const c = parseFloat(form.creditValue) || 0
     if (h > 0 && c > 0) {
-      const auto = form.cycleType === 'weekly' ? h * c * 4 : h * c
+      const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
+      const auto = h * c * (multiplier[form.cycleType] || 1)
       setForm(f => ({ ...f, budgetTotal: Math.round(auto).toString() }))
     }
   }, [form.headcount, form.creditValue, form.cycleType])
@@ -42,18 +46,23 @@ export default function NewCampaignForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
-    const res = await fetch('/api/campaigns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    const res = await fetch('/api/campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    })
     const data = await res.json()
     if (!res.ok) { setError(data.error || 'Failed to create campaign'); setLoading(false); return }
     router.push('/dashboard/campaigns')
   }
 
-  const estimatedMonthly = (parseInt(form.headcount) || 0) * (parseFloat(form.creditValue) || 0) * (form.cycleType === 'weekly' ? 4 : 1)
+  const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
+  const estimatedMonthly = (parseInt(form.headcount) || 0) * (parseFloat(form.creditValue) || 0) * (multiplier[form.cycleType] || 1)
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <Link href="/dashboard/benefits" style={{ color: '#888', display: 'flex', alignItems: 'center' }}><ArrowLeft size={18} /></Link>
+        <Link href="/dashboard/campaigns" style={{ color: '#888', display: 'flex', alignItems: 'center' }}><ArrowLeft size={18} /></Link>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>New campaign</h1>
           <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0' }}>Configure a benefit for your employees.</p>
@@ -72,11 +81,12 @@ export default function NewCampaignForm() {
             ))}
           </div>
         </div>
+
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Campaign details</h2>
           <div style={{ marginBottom: 14 }}>
             <label className="form-label">Campaign name</label>
-            <input className="form-input" value={form.name} onChange={e => update('name', e.target.value)} placeholder="Weekly meal allowance" required />
+            <input className="form-input" value={form.name} onChange={e => update('name', e.target.value)} placeholder="Monthly meal allowance" required />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
@@ -84,12 +94,33 @@ export default function NewCampaignForm() {
               <input className="form-input" type="number" min="10" max="2000" value={form.creditValue} onChange={e => update('creditValue', e.target.value)} required />
             </div>
             <div>
-              <label className="form-label">Cycle</label>
+              <label className="form-label">Min. order value (AED)</label>
+              <input className="form-input" type="number" min="0" value={form.minOrderValue} onChange={e => update('minOrderValue', e.target.value)} required />
+            </div>
+            <div>
+              <label className="form-label">Voucher validity (days)</label>
+              <select className="form-input" value={form.validityDays} onChange={e => update('validityDays', e.target.value)}>
+                <option value="3">3 days</option>
+                <option value="5">5 days (Mon–Fri)</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label className="form-label">Send cycle</label>
               <select className="form-input" value={form.cycleType} onChange={e => update('cycleType', e.target.value)}>
                 <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
                 <option value="monthly">Monthly</option>
-                <option value="one_time">One-time</option>
+                <option value="quarterly">Quarterly</option>
               </select>
+            </div>
+            <div>
+              <label className="form-label">Start date</label>
+              <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
             </div>
             <div>
               <label className="form-label">Employee headcount</label>
@@ -102,15 +133,27 @@ export default function NewCampaignForm() {
             <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>Auto-calculated. Adjust as needed.</div>
           </div>
         </div>
+
         {estimatedMonthly > 0 && (
           <div className="card" style={{ marginBottom: 16, background: '#FFF8F4', border: '0.5px solid #FFB380' }}>
             <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 12px' }}>Budget summary</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
-              <div><div style={{ color: '#888', marginBottom: 2 }}>Est. monthly spend</div><div style={{ fontSize: 18, fontWeight: 500, color: '#FF6B00' }}>AED {Math.round(estimatedMonthly).toLocaleString()}</div></div>
-              <div><div style={{ color: '#888', marginBottom: 2 }}>Per employee / {form.cycleType.replace('_',' ')}</div><div style={{ fontSize: 18, fontWeight: 500 }}>AED {form.creditValue}</div></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, fontSize: 13 }}>
+              <div>
+                <div style={{ color: '#888', marginBottom: 2 }}>Est. monthly spend</div>
+                <div style={{ fontSize: 18, fontWeight: 500, color: '#FF6B00' }}>AED {Math.round(estimatedMonthly).toLocaleString()}</div>
+              </div>
+              <div>
+                <div style={{ color: '#888', marginBottom: 2 }}>Per employee / {form.cycleType.replace('_', ' ')}</div>
+                <div style={{ fontSize: 18, fontWeight: 500 }}>AED {form.creditValue}</div>
+              </div>
+              <div>
+                <div style={{ color: '#888', marginBottom: 2 }}>Voucher valid for</div>
+                <div style={{ fontSize: 18, fontWeight: 500 }}>{form.validityDays} days</div>
+              </div>
             </div>
           </div>
         )}
+
         {error && <div style={{ color: '#A32D2D', background: '#FCEBEB', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="submit" className="btn-tlb" disabled={loading || !form.name || !form.headcount}>

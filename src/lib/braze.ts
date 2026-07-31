@@ -107,6 +107,7 @@ export async function triggerVoucherWalletCampaign(params: {
       discount: Math.round(creditValue * 100),
       discount_type: discountType || 'FLAT',
       max_discount: creditValue,
+      min_order_value: minOrderValue,
       validity_voucher: validTillUTC,
       country_credit_id: countryCode,
       campaign_reference_id: campaignReferenceId,

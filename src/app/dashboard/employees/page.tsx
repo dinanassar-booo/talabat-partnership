@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Upload, UserMinus, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, UserMinus, RefreshCw, CheckCircle, AlertCircle, UserPlus } from 'lucide-react'
 
-type Employee = { id: string; empIdHash: string; status: string; enrolledAt: string }
-type UploadResult = { ok: boolean; added: number; skipped: number; errors: number; totalActive: number; errorDetails?: string[] }
+type Employee = { id: string; empIdHash: string; email?: string; status: string; enrolledAt: string }
+type UploadResult = { ok: boolean; added: number; skipped: number; errors: number; totalActive: number }
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -12,6 +12,11 @@ export default function EmployeesPage() {
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [uploadError, setUploadError] = useState('')
   const [mode, setMode] = useState<'add' | 'replace'>('add')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [addingEmail, setAddingEmail] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [addSuccess, setAddSuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { loadEmployees() }, [])
@@ -26,19 +31,32 @@ export default function EmployeesPage() {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
-    setUploadResult(null)
-    setUploadError('')
+    setUploading(true); setUploadResult(null); setUploadError('')
     const fd = new FormData()
     fd.append('file', file)
     fd.append('mode', mode)
     const res = await fetch('/api/employees/upload', { method: 'POST', body: fd })
     const data = await res.json()
     if (!res.ok) { setUploadError(data.error || 'Upload failed'); setUploading(false); return }
-    setUploadResult(data)
-    setUploading(false)
+    setUploadResult(data); setUploading(false)
     loadEmployees()
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function handleAddEmail(e: React.FormEvent) {
+    e.preventDefault()
+    setAddingEmail(true); setAddError(''); setAddSuccess('')
+    const res = await fetch('/api/employees/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: newEmail })
+    })
+    const data = await res.json()
+    setAddingEmail(false)
+    if (!res.ok) { setAddError(data.error || 'Failed to add employee'); return }
+    setAddSuccess(`${newEmail} added successfully`)
+    setNewEmail('')
+    loadEmployees()
   }
 
   async function removeEmployee(id: string) {
@@ -46,23 +64,53 @@ export default function EmployeesPage() {
     loadEmployees()
   }
 
-  const shortHash = (h: string) => h.slice(0, 8) + '…'
+  const shortHash = (h: string) => h ? h.slice(0, 8) + '…' : '—'
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>Employees</h1>
         <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0' }}>
-          Manage who receives benefits. No email or personal data is shared with talabat.
+          Manage who receives benefits. Employee emails are stored as one-way hashes.
         </p>
       </div>
 
-      {/* Upload box */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showAddForm ? 14 : 0 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Add employee</h2>
+          <button className="btn-tlb" style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => { setShowAddForm(!showAddForm); setAddError(''); setAddSuccess('') }} type="button">
+            <UserPlus size={13} /> {showAddForm ? 'Cancel' : 'Add by email'}
+          </button>
+        </div>
+        {showAddForm && (
+          <form onSubmit={handleAddEmail}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Employee email</label>
+                <input
+                  className="form-input"
+                  type="email"
+                  placeholder="employee@company.com"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <button className="btn-tlb" type="submit" disabled={addingEmail || !newEmail}>
+                {addingEmail ? 'Adding…' : 'Add employee'}
+              </button>
+            </div>
+            {addError && <div style={{ marginTop: 10, color: '#A32D2D', fontSize: 13 }}>{addError}</div>}
+            {addSuccess && <div style={{ marginTop: 10, color: '#3B6D11', fontSize: 13 }}>✓ {addSuccess}</div>}
+          </form>
+        )}
+      </div>
+
       <div className="card" style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 12px' }}>Upload employee list</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 12px' }}>Upload employee list (CSV)</h2>
         <div style={{ background: '#F7F6F3', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#5f5e5a' }}>
           <strong style={{ display: 'block', marginBottom: 4 }}>Privacy-first upload</strong>
-          Upload a CSV with one employee ID per row. talabat stores only a one-way hash — your employee IDs are never readable or reversible.
+          Upload a CSV with one email per row. Emails are stored as one-way hashes — never readable or reversible.
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
@@ -74,15 +122,11 @@ export default function EmployeesPage() {
           </div>
           <div>
             <input ref={fileRef} type="file" accept=".csv,.txt" id="csv-upload" style={{ display: 'none' }} onChange={handleUpload} />
-            <label htmlFor="csv-upload">
-              <button className="btn-tlb" onClick={() => fileRef.current?.click()} disabled={uploading} type="button">
-                <Upload size={14} />
-                {uploading ? 'Processing…' : 'Choose CSV file'}
-              </button>
-            </label>
+            <button className="btn-tlb" onClick={() => fileRef.current?.click()} disabled={uploading} type="button">
+              <Upload size={14} /> {uploading ? 'Processing…' : 'Choose CSV file'}
+            </button>
           </div>
         </div>
-
         {uploadResult && (
           <div style={{ marginTop: 14, background: '#EAF3DE', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <CheckCircle size={16} color="#3B6D11" style={{ marginTop: 1, flexShrink: 0 }} />
@@ -101,7 +145,6 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* Employee list */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
@@ -114,13 +157,13 @@ export default function EmployeesPage() {
         </div>
         {employees.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: '#aaa' }}>
-            No employees yet. Upload a CSV to get started.
+            No employees yet. Add by email or upload a CSV to get started.
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #e0dfd7' }}>
-                <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hash (first 8 chars)</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</th>
                 <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                 <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enrolled</th>
                 <th></th>
@@ -129,7 +172,9 @@ export default function EmployeesPage() {
             <tbody>
               {employees.map(emp => (
                 <tr key={emp.id} style={{ borderBottom: '0.5px solid #f0efe7' }}>
-                  <td style={{ padding: '10px 10px', fontFamily: 'monospace', fontSize: 12, color: '#5f5e5a' }}>{shortHash(emp.empIdHash)}</td>
+                  <td style={{ padding: '10px 10px', fontSize: 13, color: '#1a1a18' }}>
+                    {emp.email || <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#5f5e5a' }}>{shortHash(emp.empIdHash)}</span>}
+                  </td>
                   <td style={{ padding: '10px 10px' }}><span className={`badge badge-${emp.status}`}>{emp.status}</span></td>
                   <td style={{ padding: '10px 10px', color: '#888' }}>{new Date(emp.enrolledAt).toLocaleDateString()}</td>
                   <td style={{ padding: '10px 10px', textAlign: 'right' }}>

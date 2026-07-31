@@ -1,11 +1,5 @@
 import crypto from 'crypto'
 
-/**
- * Hash an employee ID for storage.
- * We combine the partnerId as a namespace so the same employee ID
- * at two different companies produces different hashes.
- * No raw employee data (name, email) ever enters our system.
- */
 export function hashEmployeeId(partnerId: string, employeeId: string): string {
   return crypto
     .createHmac('sha256', partnerId)
@@ -13,11 +7,6 @@ export function hashEmployeeId(partnerId: string, employeeId: string): string {
     .digest('hex')
 }
 
-/**
- * Parse a CSV upload of employee IDs.
- * Expected format: one employee ID per line (or comma-separated header + rows).
- * Returns { valid: string[], errors: string[] }
- */
 export function parseEmployeeCsv(content: string): {
   valid: string[]
   errors: string[]
@@ -26,22 +15,36 @@ export function parseEmployeeCsv(content: string): {
   const valid: string[] = []
   const errors: string[] = []
 
-  // Skip header row if it looks like a header
-  const startIdx = lines[0]?.toLowerCase().includes('employee') ? 1 : 0
+  const firstLine = lines[0]?.toLowerCase() || ''
+  const startIdx = (firstLine.includes('email') || firstLine.includes('employee')) ? 1 : 0
 
   for (let i = startIdx; i < lines.length; i++) {
-    const id = lines[i].split(',')[0].trim() // take first column if CSV
-    if (!id) continue
-    if (id.length < 2 || id.length > 64) {
-      errors.push(`Row ${i + 1}: ID "${id}" invalid length`)
+    const value = lines[i].split(',')[0].trim().toLowerCase()
+    if (!value) continue
+
+    if (value.includes('@')) {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        valid.push(value)
+      } else {
+        errors.push(`Row ${i + 1}: "${value}" is not a valid email address`)
+      }
       continue
     }
-    if (!/^[a-zA-Z0-9_\-]+$/.test(id)) {
-      errors.push(`Row ${i + 1}: ID "${id}" contains invalid characters`)
+
+    if (value.length < 2 || value.length > 64) {
+      errors.push(`Row ${i + 1}: "${value}" invalid length`)
       continue
     }
-    valid.push(id)
+    if (!/^[a-zA-Z0-9_\-]+$/.test(value)) {
+      errors.push(`Row ${i + 1}: "${value}" contains invalid characters`)
+      continue
+    }
+    valid.push(value)
   }
 
   return { valid, errors }
+}
+
+export function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }

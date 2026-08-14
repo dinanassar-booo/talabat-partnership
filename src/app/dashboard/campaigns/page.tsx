@@ -120,11 +120,12 @@ export default function CampaignsPage() {
                       </button>
                     )}
                     {c.status === 'active' && (
-                      <span style={{ fontSize: 12, color: '#3B6D11' }}>● Live</span>
-                    )}
-                    {c.status === 'paused' && (
-                      <span style={{ fontSize: 12, color: '#7A5C00' }}>⚠ Paused</span>
-                    )}
+  <span style={{ fontSize: 12, color: '#3B6D11' }}>● Live</span>
+)}
+{c.status === 'paused' && (
+  <span style={{ fontSize: 12, color: '#7A5C00' }}>⚠ Paused</span>
+)}
+<Link href={`/dashboard/campaigns/${c.id}/codes`} style={{ fontSize: 12, color: '#FF6B00', textDecoration: 'none', marginLeft: 8 }}>Codes →</Link>
                   </td>
                 </tr>
               )

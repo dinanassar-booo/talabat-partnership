@@ -70,6 +70,20 @@ export async function ensureDb() {
     )
   `
   await sql`
+    CREATE TABLE IF NOT EXISTS benefit_codes (
+      id TEXT PRIMARY KEY,
+      partner_id TEXT NOT NULL REFERENCES partners(id),
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+      code TEXT NOT NULL UNIQUE,
+      employee_email TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      expires_at TIMESTAMPTZ NOT NULL,
+      assigned_at TIMESTAMPTZ,
+      redeemed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+  await sql`
     CREATE TABLE IF NOT EXISTS upload_batches (
       id TEXT PRIMARY KEY,
       partner_id TEXT NOT NULL REFERENCES partners(id),

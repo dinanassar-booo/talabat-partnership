@@ -98,6 +98,11 @@ export async function ensureDb() {
   `
 // Add new columns to existing tables (safe — IF NOT EXISTS)
   await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT`
+  await sql`ALTER TABLE partners ADD COLUMN IF NOT EXISTS slug TEXT`
+  await sql`ALTER TABLE partners ADD COLUMN IF NOT EXISTS company_email_domain TEXT`
+  await sql`ALTER TABLE benefit_codes ADD COLUMN IF NOT EXISTS claimed_by_email TEXT`
+  await sql`ALTER TABLE benefit_codes ADD COLUMN IF NOT EXISTS claimed_by_employee_id TEXT`
+  await sql`ALTER TABLE benefit_codes ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ`
   await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS discount_type TEXT NOT NULL DEFAULT 'FLAT'`
   await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_order_value NUMERIC NOT NULL DEFAULT 30`
   await sql`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS validity_days INTEGER NOT NULL DEFAULT 7`

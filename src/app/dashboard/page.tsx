@@ -2,21 +2,23 @@ import { getSession } from '@/lib/auth'
 import { getDb } from '@/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { TrendingUp, Users, ShoppingBag, Banknote, Plus, ArrowRight } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Banknote, Plus, ArrowRight, Link2 } from 'lucide-react'
 
 export default async function DashboardPage() {
   const session = await getSession()
   if (!session) redirect('/login')
   const sql = getDb()
 
-  const [empCount, campaigns, budget] = await Promise.all([
-    sql`SELECT COUNT(*) as cnt FROM employees WHERE partner_id = ${session.id} AND status = 'active'`,
+  const [campaigns, budget, partner] = await Promise.all([
     sql`SELECT c.*, bt.name as benefit_name FROM campaigns c JOIN benefit_types bt ON c.benefit_type_id = bt.id WHERE c.partner_id = ${session.id} ORDER BY c.created_at DESC LIMIT 10`,
     sql`SELECT * FROM budget_accounts WHERE partner_id = ${session.id} LIMIT 1`,
+    sql`SELECT slug FROM partners WHERE id = ${session.id} LIMIT 1`,
   ])
 
   const totalGmv = campaigns.reduce((s: number, c: Record<string, unknown>) => s + Number(c.budget_used), 0)
   const activeCampaigns = campaigns.filter((c: Record<string, unknown>) => c.status === 'active')
+  const slug = partner[0]?.slug || ''
+  const joinLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://talabat-partnership.vercel.app'}/join/${slug}`
 
   return (
     <div>
@@ -24,9 +26,9 @@ export default async function DashboardPage() {
         <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>Dashboard</h1>
         <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0' }}>{session.companyName} · {session.country}</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Active employees', value: Number(empCount[0].cnt).toLocaleString(), icon: Users, color: '#185FA5' },
           { label: 'GMV this month', value: `AED ${Math.round(totalGmv).toLocaleString()}`, icon: TrendingUp, color: '#FF6B00' },
           { label: 'Active campaigns', value: activeCampaigns.length, icon: ShoppingBag, color: '#3B6D11' },
           { label: 'Budget balance', value: `AED ${Math.round(Number(budget[0]?.balance ?? 0)).toLocaleString()}`, icon: Banknote, color: '#854F0B' },
@@ -40,10 +42,35 @@ export default async function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Employee join link */}
+      {slug && (
+        <div className="card" style={{ marginBottom: 20, background: '#FFF8F4', border: '0.5px solid #FFB380' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <Link2 size={16} color="#FF6B00" />
+            <h2 style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>Employee join link</h2>
+          </div>
+          <p style={{ fontSize: 12, color: '#888', margin: '0 0 10px' }}>Share this link with your employees so they can claim their benefit.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, background: '#fff', border: '0.5px solid #e0dfd7', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace', color: '#5f5e5a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {joinLink}
+            </div>
+            <button
+              onClick={undefined}
+              id="copy-join-link"
+              data-link={joinLink}
+              style={{ padding: '8px 14px', background: '#FF6B00', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Copy link
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Campaigns</h2>
-          <Link href="/dashboard/benefits"><button className="btn-tlb" style={{ fontSize: 12, padding: '6px 12px' }}><Plus size={13} /> New campaign</button></Link>
+          <Link href="/dashboard/campaigns/new"><button className="btn-tlb" style={{ fontSize: 12, padding: '6px 12px' }}><Plus size={13} /> New campaign</button></Link>
         </div>
         {campaigns.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: '#aaa' }}>
@@ -66,10 +93,11 @@ export default async function DashboardPage() {
           </table>
         )}
       </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         {[
-          { label: 'Manage employees', sub: `${Number(empCount[0].cnt).toLocaleString()} active`, href: '/dashboard/employees' },
           { label: 'Onboarding checklist', sub: session.status === 'active' ? 'All steps complete' : 'Setup in progress', href: '/dashboard/onboarding' },
+          { label: 'Billing', sub: `AED ${Math.round(Number(budget[0]?.balance ?? 0)).toLocaleString()} available`, href: '/dashboard/billing' },
         ].map(item => (
           <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
             <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
@@ -79,6 +107,15 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      <script dangerouslySetInnerHTML={{ __html: `
+        document.getElementById('copy-join-link')?.addEventListener('click', function() {
+          navigator.clipboard.writeText(this.dataset.link).then(() => {
+            this.textContent = 'Copied!';
+            setTimeout(() => this.textContent = 'Copy link', 2000);
+          });
+        });
+      `}} />
     </div>
   )
 }

@@ -16,7 +16,6 @@ export default async function OnboardingPage() {
   const ec = Number(empCount[0].cnt), cc = Number(campCount[0].cnt), bal = Number(budget[0]?.balance ?? 0)
   const steps = [
     { label: 'Create account', done: true, href: null, desc: 'Account created and terms accepted.' },
-    { label: 'Upload employee list', done: ec > 0, href: '/dashboard/employees', desc: ec > 0 ? `${ec.toLocaleString()} employees active.` : 'Upload a CSV with employee IDs — no emails needed.' },
     { label: 'Configure a benefit', done: cc > 0, href: '/dashboard/benefits', desc: cc > 0 ? `${cc} campaign${cc > 1 ? 's' : ''} configured.` : 'Choose from voucher wallet, TPro, dine-out, and more.' },
     { label: 'Add budget', done: bal > 0, href: '/dashboard/billing', desc: bal > 0 ? `AED ${Math.round(bal).toLocaleString()} balance.` : 'Top up your account to fund employee credits.' },
     { label: 'Go live', done: session.status === 'active', href: null, desc: session.status === 'active' ? 'Your program is live.' : 'Completes automatically once steps 2–4 are done.' },

@@ -6,7 +6,7 @@ const BRAZE_API_URL = process.env.BRAZE_API_URL || 'https://rest.iad-01.braze.co
 const BRAZE_API_KEY = process.env.BRAZE_API_KEY || ''
 
 // PLACEHOLDER: Replace with real Braze email canvas ID for verification email
-const VERIFICATION_EMAIL_CANVAS_ID = 'PLACEHOLDER_VERIFICATION_EMAIL_CANVAS_ID'
+const VERIFICATION_EMAIL_CANVAS_ID = '74044200-f7c9-4932-aa6e-4f2e7073687f'
 
 // PLACEHOLDER: Replace with real IAM deeplink format
 const IAM_DEEPLINK = 'talabat://iam/benefit-claim'

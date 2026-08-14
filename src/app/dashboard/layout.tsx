@@ -3,13 +3,12 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, Gift, BarChart2,
+  LayoutDashboard, Gift, BarChart2,
   ClipboardList, CreditCard, LogOut, Bell, Settings
 } from 'lucide-react'
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'main' },
-  { label: 'Employees', href: '/dashboard/employees', icon: Users, section: 'main' },
   { label: 'Benefits catalog', href: '/dashboard/benefits', icon: Gift, section: 'main' },
   { label: 'Campaigns', href: '/dashboard/campaigns', icon: BarChart2, section: 'main' },
   { label: 'Onboarding', href: '/dashboard/onboarding', icon: ClipboardList, section: 'setup' },

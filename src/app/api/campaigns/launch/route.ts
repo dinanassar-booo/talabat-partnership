@@ -29,15 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Insufficient budget balance' }, { status: 400 })
   }
 
-  const employees = await sql`
-    SELECT email FROM employees
-    WHERE partner_id = ${session.id} AND status = 'active' AND email IS NOT NULL
-  `
-  if (employees.length === 0) {
-    return NextResponse.json({ error: 'No active employees found. Please upload your employee list first.' }, { status: 400 })
-  }
-
-const emails = ['27608673', '26715995']
+ 
   
   const brazeResult = await triggerVoucherWalletCampaign({
     emails,
@@ -73,5 +65,5 @@ const emails = ['27608673', '26715995']
     WHERE partner_id = ${session.id}
   `
 
-  return NextResponse.json({ ok: true, employeesReached: emails.length })
+  return NextResponse.json({ ok: true })
 }

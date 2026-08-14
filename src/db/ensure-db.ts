@@ -110,6 +110,7 @@ export async function ensureDb() {
 
   // Update voucher wallet canvas ID
   await sql`UPDATE benefit_types SET braze_canvas_id = '91e0ba33-7878-45a9-aa62-bcc9b1437a44' WHERE slug = 'voucher_wallet'`
+  await sql`UPDATE partners SET slug = LOWER(REGEXP_REPLACE(company_name, '[^a-zA-Z0-9]+', '-', 'g')) WHERE slug IS NULL`
   
   // Seed benefit types
   const seeds = [

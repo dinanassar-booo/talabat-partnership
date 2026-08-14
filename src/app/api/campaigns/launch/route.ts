@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { getDb } from '@/db'
-import { triggerVoucherWalletCampaign } from '@/lib/braze'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -29,25 +28,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Insufficient budget balance' }, { status: 400 })
   }
 
- 
-  
-  const brazeResult = await triggerVoucherWalletCampaign({
-    emails,
-    campaignId: campaign.id,
-    partnerId: session.id,
-    partnerName: campaign.company_name,
-    creditValue: Number(campaign.credit_value),
-    minOrderValue: Number(campaign.min_order_value) || 30,
-    discountType: campaign.discount_type || 'FLAT',
-    validityDays: Number(campaign.validity_days) || 7,
-    country: campaign.country || 'UAE',
-    cycleType: campaign.cycle_type || 'monthly',
-  })
-
-  if (!brazeResult.ok) {
-    return NextResponse.json({ error: `Braze error: ${brazeResult.error}` }, { status: 500 })
-  }
-
   const nextSend = new Date()
   const cycleDays: Record<string, number> = { weekly: 7, biweekly: 14, monthly: 30, quarterly: 90 }
   nextSend.setDate(nextSend.getDate() + (cycleDays[campaign.cycle_type] || 30))
@@ -65,5 +45,5 @@ export async function POST(req: NextRequest) {
     WHERE partner_id = ${session.id}
   `
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, message: 'Campaign activated. Generate codes from the Codes tab.' })
 }

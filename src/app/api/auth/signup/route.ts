@@ -3,6 +3,14 @@ import { getDb } from '@/db'
 import { hashPassword, signToken, COOKIE_NAME } from '@/lib/auth'
 import crypto from 'crypto'
 
+function generateSlug(companyName: string): string {
+  return companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { companyName, tradeNumber, country, industry, adminName, adminEmail, password, tcAccepted } = await req.json()
@@ -17,7 +25,12 @@ export async function POST(req: NextRequest) {
     const id = 'partner_' + crypto.randomBytes(8).toString('hex')
     const passwordHash = await hashPassword(password)
 
-    await sql`INSERT INTO partners (id, company_name, trade_number, country, industry, admin_name, admin_email, password_hash, status, tc_accepted_at) VALUES (${id}, ${companyName}, ${tradeNumber}, ${country || 'UAE'}, ${industry || 'Other'}, ${adminName}, ${adminEmail}, ${passwordHash}, 'onboarding', NOW())`
+    // Generate unique slug from company name
+    let slug = generateSlug(companyName)
+    const slugExists = await sql`SELECT id FROM partners WHERE slug = ${slug} LIMIT 1`
+    if (slugExists.length > 0) slug = `${slug}-${crypto.randomBytes(3).toString('hex')}`
+
+    await sql`INSERT INTO partners (id, company_name, trade_number, country, industry, admin_name, admin_email, password_hash, status, tc_accepted_at, slug) VALUES (${id}, ${companyName}, ${tradeNumber}, ${country || 'UAE'}, ${industry || 'Other'}, ${adminName}, ${adminEmail}, ${passwordHash}, 'onboarding', NOW(), ${slug})`
     await sql`INSERT INTO budget_accounts (id, partner_id) VALUES (${'budget_' + id}, ${id})`
 
     const token = signToken(id)

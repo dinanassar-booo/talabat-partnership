@@ -100,13 +100,21 @@ export async function POST(req: NextRequest) {
 
     // PLACEHOLDER: Trigger Braze verification email canvas
     // This sends the employee an email with their code + IAM deeplink
-    await fetch(`${BRAZE_API_URL}/canvas/trigger/send`, {
+    await fetch(`${BRAZE_API_URL}/messages/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
       body: JSON.stringify({
-        canvas_id: VERIFICATION_EMAIL_CANVAS_ID,
-        recipients: [{ external_user_id: companyEmail }],
-        canvas_entry_properties: {
+        external_user_ids: [companyEmail],
+        messages: {
+          email: {
+            app_id: process.env.BRAZE_APP_ID || '',
+            subject: `Your ${partner.company_name} benefit is ready 🎁`,
+            from: process.env.BRAZE_FROM_EMAIL || 'benefits@talabat.com',
+            body: `Your benefit code is: ${code.code}`,
+            reply_to: 'no-reply@talabat.com',
+          }
+        },
+        trigger_properties: {
           benefit_code: code.code,
           partner_name: partner.company_name,
           iam_deeplink: IAM_DEEPLINK,

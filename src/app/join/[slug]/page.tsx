@@ -1,14 +1,28 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+
+type PartnerInfo = { companyName: string; slug: string }
 
 export default function JoinPage() {
   const { slug } = useParams()
+  const [partner, setPartner] = useState<PartnerInfo | null>(null)
   const [employeeId, setEmployeeId] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/join/info?slug=${slug}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) setNotFound(true)
+        else setPartner(d)
+      })
+      .catch(() => setNotFound(true))
+  }, [slug])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -28,6 +42,18 @@ export default function JoinPage() {
     }
   }
 
+  if (notFound) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F7F6F3', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+          <h1 style={{ fontSize: 20, fontWeight: 500, margin: '0 0 8px' }}>Company not found</h1>
+          <p style={{ color: '#888', fontSize: 14 }}>Please check the link you received and try again.</p>
+        </div>
+      </div>
+    )
+  }
+
   if (success) {
     return (
       <div style={{ minHeight: '100vh', background: '#F7F6F3', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -38,7 +64,7 @@ export default function JoinPage() {
             We've sent your benefit code and redemption link to <strong>{companyEmail}</strong>
           </p>
           <p style={{ color: '#888', fontSize: 13, lineHeight: 1.6 }}>
-            Open the email, copy your code, and tap the link to claim your talabat benefit.
+            Open the email, copy your code, and tap the link to claim your {partner?.companyName} benefit.
           </p>
         </div>
       </div>
@@ -49,16 +75,23 @@ export default function JoinPage() {
     <div style={{ minHeight: '100vh', background: '#F7F6F3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ marginBottom: 32, textAlign: 'center' }}>
         <div style={{ width: 44, height: 44, background: '#FF6B00', borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 22, marginBottom: 14 }}>t</div>
-        <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 6px' }}>Claim your employee benefit</h1>
-        <p style={{ color: '#888', fontSize: 14, margin: 0 }}>Enter your details to receive your talabat benefit code</p>
+        {partner ? (
+          <>
+            <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 6px' }}>{partner.companyName} employee benefit</h1>
+            <p style={{ color: '#888', fontSize: 14, margin: 0 }}>{partner.companyName} has activated a talabat benefit for you</p>
+          </>
+        ) : (
+          <>
+            <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 6px' }}>Claim your employee benefit</h1>
+            <p style={{ color: '#888', fontSize: 14, margin: 0 }}>Loading…</p>
+          </>
+        )}
       </div>
 
       <div style={{ width: '100%', maxWidth: 420, background: '#fff', borderRadius: 12, border: '0.5px solid #e0dfd7', padding: 28 }}>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#5f5e5a', marginBottom: 5 }}>
-              Employee ID
-            </label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#5f5e5a', marginBottom: 5 }}>Employee ID</label>
             <input
               type="text"
               value={employeeId}
@@ -71,9 +104,7 @@ export default function JoinPage() {
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#5f5e5a', marginBottom: 5 }}>
-              Company email address
-            </label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#5f5e5a', marginBottom: 5 }}>Company email address</label>
             <input
               type="email"
               value={companyEmail}
@@ -93,10 +124,10 @@ export default function JoinPage() {
 
           <button
             type="submit"
-            disabled={loading || !employeeId || !companyEmail}
+            disabled={loading || !employeeId || !companyEmail || !partner}
             style={{ width: '100%', background: loading || !employeeId || !companyEmail ? '#ffb380' : '#FF6B00', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
           >
-            {loading ? 'Processing…' : 'Claim my benefit →'}
+            {loading ? 'Processing…' : `Claim my ${partner?.companyName || ''} benefit →`}
           </button>
         </form>
 

@@ -84,20 +84,16 @@ export async function POST(req: NextRequest) {
       WHERE id = ${code.id}
     `
 
-    // Sync employee to Braze — set partnership attribute
-    const brazeSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+   // Sync employee to Braze — set partnership attribute
     await fetch(`${BRAZE_API_URL}/users/track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
       body: JSON.stringify({
         attributes: [{
           email: companyEmail,
-          partnership_id: brazeSlug,
+          partnership_id: slug,
           partner_name: partner.company_name,
-          employee_id_hash: empIdHash,
-          benefit_code: code.code,
-          _update_existing_only: false,
-          user_alias: { alias_name: companyEmail, alias_label: 'email' },
+          _update_existing_only: true,
         }]
       })
     }).catch(console.error)
@@ -109,7 +105,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
       body: JSON.stringify({
         canvas_id: VERIFICATION_EMAIL_CANVAS_ID,
-        recipients: [{ user_alias: { alias_name: companyEmail, alias_label: 'email' } }],
+        recipients: [{ external_user_id: companyEmail }],
         canvas_entry_properties: {
           benefit_code: code.code,
           partner_name: partner.company_name,

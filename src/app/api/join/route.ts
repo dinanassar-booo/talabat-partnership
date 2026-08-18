@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
       body: JSON.stringify({
         canvas_id: VERIFICATION_EMAIL_CANVAS_ID,
-        recipients: [{ external_user_id: companyEmail }],
+        recipients: [{ user_alias: { alias_name: companyEmail, alias_label: 'email' } }],
         canvas_entry_properties: {
           benefit_code: code.code,
           partner_name: partner.company_name,

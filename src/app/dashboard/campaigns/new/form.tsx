@@ -22,6 +22,7 @@ export default function NewCampaignForm() {
     minOrderValue: '30',
     validityDays: '7',
     startDate: new Date().toISOString().slice(0, 10),
+    fundingModel: 'employer_funded',
   })
 
   useEffect(() => {
@@ -59,6 +60,12 @@ export default function NewCampaignForm() {
   const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
   const estimatedMonthly = (parseInt(form.headcount) || 0) * (parseFloat(form.creditValue) || 0) * (multiplier[form.cycleType] || 1)
 
+  const fundingLabels: Record<string, { label: string; desc: string }> = {
+    employer_funded: { label: 'Employer funded', desc: 'Company covers 100% — employees receive the benefit at no cost' },
+    co_funded: { label: 'Co-funded', desc: 'Company subsidizes a portion — employees pay the remaining amount' },
+    employee_benefit: { label: 'Employee benefit', desc: 'Employees pay in full but at a negotiated corporate rate' },
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -69,6 +76,8 @@ export default function NewCampaignForm() {
         </div>
       </div>
       <form onSubmit={handleSubmit}>
+
+        {/* Benefit type */}
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Benefit type</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -82,6 +91,26 @@ export default function NewCampaignForm() {
           </div>
         </div>
 
+        {/* Funding model */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Funding model</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {Object.entries(fundingLabels).map(([value, { label, desc }]) => (
+              <div key={value} onClick={() => update('fundingModel', value)}
+                style={{ border: `${form.fundingModel === value ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', background: form.fundingModel === value ? '#FFF8F4' : '#fff', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${form.fundingModel === value ? '#FF6B00' : '#d1d0c9'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 }}>
+                  {form.fundingModel === value && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF6B00' }} />}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 12, color: '#888' }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Campaign details */}
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Campaign details</h2>
           <div style={{ marginBottom: 14 }}>
@@ -134,21 +163,26 @@ export default function NewCampaignForm() {
           </div>
         </div>
 
+        {/* Budget summary */}
         {estimatedMonthly > 0 && (
           <div className="card" style={{ marginBottom: 16, background: '#FFF8F4', border: '0.5px solid #FFB380' }}>
             <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 12px' }}>Budget summary</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, fontSize: 13 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, fontSize: 13 }}>
               <div>
                 <div style={{ color: '#888', marginBottom: 2 }}>Est. monthly spend</div>
                 <div style={{ fontSize: 18, fontWeight: 500, color: '#FF6B00' }}>AED {Math.round(estimatedMonthly).toLocaleString()}</div>
               </div>
               <div>
-                <div style={{ color: '#888', marginBottom: 2 }}>Per employee / {form.cycleType.replace('_', ' ')}</div>
+                <div style={{ color: '#888', marginBottom: 2 }}>Per employee / {form.cycleType}</div>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>AED {form.creditValue}</div>
               </div>
               <div>
                 <div style={{ color: '#888', marginBottom: 2 }}>Voucher valid for</div>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>{form.validityDays} days</div>
+              </div>
+              <div>
+                <div style={{ color: '#888', marginBottom: 2 }}>Funding</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{fundingLabels[form.fundingModel]?.label}</div>
               </div>
             </div>
           </div>

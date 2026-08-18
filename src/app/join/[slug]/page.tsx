@@ -127,7 +127,7 @@ export default function JoinPage() {
             disabled={loading || !employeeId || !companyEmail || !partner}
             style={{ width: '100%', background: loading || !employeeId || !companyEmail ? '#ffb380' : '#FF6B00', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
           >
-            {loading ? 'Processing…' : `Claim my ${partner?.companyName || ''} benefit →`}
+            {loading ? 'Processing…' : `Claim my benefit →`}
           </button>
         </form>
 

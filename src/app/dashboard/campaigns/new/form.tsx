@@ -81,13 +81,29 @@ export default function NewCampaignForm() {
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Benefit type</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {benefits.map(b => (
-              <div key={b.id} onClick={() => update('benefitTypeId', b.id)}
-                style={{ border: `${form.benefitTypeId === b.id ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', background: form.benefitTypeId === b.id ? '#FFF8F4' : '#fff' }}>
-                <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 3 }}>{b.name}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>{b.description}</div>
-              </div>
-            ))}
+            {benefits.map(b => {
+  const isActive = b.slug === 'voucher_wallet'
+  return (
+    <div key={b.id}
+      onClick={() => isActive && update('benefitTypeId', b.id)}
+      style={{
+        border: `${form.benefitTypeId === b.id ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`,
+        borderRadius: 10, padding: '12px 14px',
+        cursor: isActive ? 'pointer' : 'not-allowed',
+        background: form.benefitTypeId === b.id ? '#FFF8F4' : isActive ? '#fff' : '#F7F6F3',
+        opacity: isActive ? 1 : 0.5,
+        position: 'relative',
+      }}>
+      <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 3, color: isActive ? '#1a1a18' : '#888' }}>{b.name}</div>
+      <div style={{ fontSize: 12, color: '#888' }}>{b.description}</div>
+      {!isActive && (
+        <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 600, background: '#e0dfd7', color: '#888', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Coming soon
+        </span>
+      )}
+    </div>
+  )
+})}
           </div>
         </div>
 

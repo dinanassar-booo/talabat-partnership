@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  const { benefitTypeId, name, creditValue, cycleType, headcount, budgetTotal, minOrderValue, validityDays, startDate } = await req.json()
+    const { benefitTypeId, name, creditValue, cycleType, headcount, budgetTotal, minOrderValue, validityDays, startDate, endDate } = await req.json()
   if (!benefitTypeId || !name || !creditValue || !headcount || !budgetTotal) return NextResponse.json({ error: 'All fields required' }, { status: 400 })
   const sql = getDb()
   const benefit = await sql`SELECT id, braze_canvas_id FROM benefit_types WHERE id = ${benefitTypeId} LIMIT 1`

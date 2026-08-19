@@ -22,6 +22,7 @@ export default function NewCampaignForm() {
     minOrderValue: '30',
     validityDays: '7',
     startDate: new Date().toISOString().slice(0, 10),
+    endDate: '',
     fundingModel: 'employer_funded',
   })
 
@@ -154,9 +155,9 @@ export default function NewCampaignForm() {
               </select>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Send cycle</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+  <div>
+    <label className="form-label">Send cycle</label>
               <select className="form-input" value={form.cycleType} onChange={e => update('cycleType', e.target.value)}>
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Every 2 weeks</option>
@@ -165,9 +166,14 @@ export default function NewCampaignForm() {
               </select>
             </div>
             <div>
-              <label className="form-label">Start date</label>
-              <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
-            </div>
+              <div>
+  <label className="form-label">Start date</label>
+  <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
+</div>
+<div>
+  <label className="form-label">End date (optional)</label>
+  <input className="form-input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().slice(0, 10)} onChange={e => update('endDate', e.target.value)} />
+</div>
             <div>
               <label className="form-label">Employee headcount</label>
               <input className="form-input" type="number" min="1" value={form.headcount} onChange={e => update('headcount', e.target.value)} placeholder="2847" required />

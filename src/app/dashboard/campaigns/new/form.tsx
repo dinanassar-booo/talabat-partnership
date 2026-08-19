@@ -60,10 +60,10 @@ export default function NewCampaignForm() {
   const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
   const estimatedMonthly = (parseInt(form.headcount) || 0) * (parseFloat(form.creditValue) || 0) * (multiplier[form.cycleType] || 1)
 
-  const fundingLabels: Record<string, { label: string; desc: string }> = {
-    employer_funded: { label: 'Employer funded', desc: 'Company covers 100% — employees receive the benefit at no cost' },
-    co_funded: { label: 'Co-funded', desc: 'Company subsidizes a portion — employees pay the remaining amount' },
-    employee_benefit: { label: 'Employee benefit', desc: 'Employees pay in full but at a negotiated corporate rate' },
+    const fundingLabels: Record<string, { label: string; desc: string; available: boolean }> = {
+    employer_funded: { label: 'Employer funded', desc: 'Company covers 100% — employees receive the benefit at no cost', available: true },
+    co_funded: { label: 'Co-funded', desc: 'Company subsidizes a portion — employees pay the remaining amount', available: false },
+    employee_benefit: { label: 'Employee benefit', desc: 'Employees pay in full but at a negotiated corporate rate', available: false },
   }
 
   return (
@@ -111,9 +111,10 @@ export default function NewCampaignForm() {
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Funding model</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Object.entries(fundingLabels).map(([value, { label, desc }]) => (
-              <div key={value} onClick={() => update('fundingModel', value)}
-                style={{ border: `${form.fundingModel === value ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', background: form.fundingModel === value ? '#FFF8F4' : '#fff', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        {Object.entries(fundingLabels).map(([value, { label, desc, available }]) => (
+              <div key={value} onClick={() => available && update('fundingModel', value)}
+                style={{ border: `${form.fundingModel === value ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: available ? 'pointer' : 'not-allowed', background: form.fundingModel === value ? '#FFF8F4' : available ? '#fff' : '#F7F6F3', opacity: available ? 1 : 0.5, display: 'flex', alignItems: 'flex-start', gap: 10, position: 'relative' }}>
+                {!available && <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 600, background: '#e0dfd7', color: '#888', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase' }}>Coming soon</span>}
                 <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${form.fundingModel === value ? '#FF6B00' : '#d1d0c9'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 }}>
                   {form.fundingModel === value && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF6B00' }} />}
                 </div>

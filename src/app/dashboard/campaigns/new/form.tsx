@@ -167,9 +167,14 @@ export default function NewCampaignForm() {
             </div>
             <div>
               <div>
-  <label className="form-label">Start date</label>
-  <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
-</div>
+  <div>
+              <label className="form-label">Start date</label>
+              <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
+            </div>
+            <div>
+              <label className="form-label">End date (optional)</label>
+              <input className="form-input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().slice(0, 10)} onChange={e => update('endDate', e.target.value)} />
+            </div>
 <div>
   <label className="form-label">End date (optional)</label>
   <input className="form-input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().slice(0, 10)} onChange={e => update('endDate', e.target.value)} />

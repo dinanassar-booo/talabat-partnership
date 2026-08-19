@@ -38,8 +38,7 @@ export default function NewCampaignForm() {
     const c = parseFloat(form.creditValue) || 0
     if (h > 0 && c > 0) {
       const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
-      const auto = h * c * (multiplier[form.cycleType] || 1)
-      setForm(f => ({ ...f, budgetTotal: Math.round(auto).toString() }))
+      setForm(f => ({ ...f, budgetTotal: Math.round(h * c * (multiplier[f.cycleType] || 1)).toString() }))
     }
   }, [form.headcount, form.creditValue, form.cycleType])
 
@@ -61,7 +60,7 @@ export default function NewCampaignForm() {
   const multiplier: Record<string, number> = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.33 }
   const estimatedMonthly = (parseInt(form.headcount) || 0) * (parseFloat(form.creditValue) || 0) * (multiplier[form.cycleType] || 1)
 
-    const fundingLabels: Record<string, { label: string; desc: string; available: boolean }> = {
+  const fundingLabels: Record<string, { label: string; desc: string; available: boolean }> = {
     employer_funded: { label: 'Employer funded', desc: 'Company covers 100% — employees receive the benefit at no cost', available: true },
     co_funded: { label: 'Co-funded', desc: 'Company subsidizes a portion — employees pay the remaining amount', available: false },
     employee_benefit: { label: 'Employee benefit', desc: 'Employees pay in full but at a negotiated corporate rate', available: false },
@@ -83,28 +82,20 @@ export default function NewCampaignForm() {
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Benefit type</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {benefits.map(b => {
-  const isActive = b.slug === 'voucher_wallet'
-  return (
-    <div key={b.id}
-      onClick={() => isActive && update('benefitTypeId', b.id)}
-      style={{
-        border: `${form.benefitTypeId === b.id ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`,
-        borderRadius: 10, padding: '12px 14px',
-        cursor: isActive ? 'pointer' : 'not-allowed',
-        background: form.benefitTypeId === b.id ? '#FFF8F4' : isActive ? '#fff' : '#F7F6F3',
-        opacity: isActive ? 1 : 0.5,
-        position: 'relative',
-      }}>
-      <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 3, color: isActive ? '#1a1a18' : '#888' }}>{b.name}</div>
-      <div style={{ fontSize: 12, color: '#888' }}>{b.description}</div>
-      {!isActive && (
-        <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 600, background: '#e0dfd7', color: '#888', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Coming soon
-        </span>
-      )}
-    </div>
-  )
-})}
+              const isActive = b.slug === 'voucher_wallet'
+              return (
+                <div key={b.id} onClick={() => isActive && update('benefitTypeId', b.id)}
+                  style={{ border: `${form.benefitTypeId === b.id ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: isActive ? 'pointer' : 'not-allowed', background: form.benefitTypeId === b.id ? '#FFF8F4' : isActive ? '#fff' : '#F7F6F3', opacity: isActive ? 1 : 0.5, position: 'relative' }}>
+                  <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 3, color: isActive ? '#1a1a18' : '#888' }}>{b.name}</div>
+                  <div style={{ fontSize: 12, color: '#888' }}>{b.description}</div>
+                  {!isActive && (
+                    <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 600, background: '#e0dfd7', color: '#888', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Coming soon
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -112,7 +103,7 @@ export default function NewCampaignForm() {
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 500, margin: '0 0 16px' }}>Funding model</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {Object.entries(fundingLabels).map(([value, { label, desc, available }]) => (
+            {Object.entries(fundingLabels).map(([value, { label, desc, available }]) => (
               <div key={value} onClick={() => available && update('fundingModel', value)}
                 style={{ border: `${form.fundingModel === value ? '2px solid #FF6B00' : '0.5px solid #e0dfd7'}`, borderRadius: 10, padding: '12px 14px', cursor: available ? 'pointer' : 'not-allowed', background: form.fundingModel === value ? '#FFF8F4' : available ? '#fff' : '#F7F6F3', opacity: available ? 1 : 0.5, display: 'flex', alignItems: 'flex-start', gap: 10, position: 'relative' }}>
                 {!available && <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 600, background: '#e0dfd7', color: '#888', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase' }}>Coming soon</span>}
@@ -156,8 +147,8 @@ export default function NewCampaignForm() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-  <div>
-    <label className="form-label">Send cycle</label>
+            <div>
+              <label className="form-label">Send cycle</label>
               <select className="form-input" value={form.cycleType} onChange={e => update('cycleType', e.target.value)}>
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Every 2 weeks</option>
@@ -166,8 +157,6 @@ export default function NewCampaignForm() {
               </select>
             </div>
             <div>
-              <div>
-  <div>
               <label className="form-label">Start date</label>
               <input className="form-input" type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => update('startDate', e.target.value)} required />
             </div>
@@ -175,10 +164,6 @@ export default function NewCampaignForm() {
               <label className="form-label">End date (optional)</label>
               <input className="form-input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().slice(0, 10)} onChange={e => update('endDate', e.target.value)} />
             </div>
-<div>
-  <label className="form-label">End date (optional)</label>
-  <input className="form-input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().slice(0, 10)} onChange={e => update('endDate', e.target.value)} />
-</div>
             <div>
               <label className="form-label">Employee headcount</label>
               <input className="form-input" type="number" min="1" value={form.headcount} onChange={e => update('headcount', e.target.value)} placeholder="2847" required />

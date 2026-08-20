@@ -3,7 +3,26 @@ import { getDb } from '@/db'
 
 const BRAZE_API_URL = process.env.BRAZE_API_URL || 'https://rest.iad-01.braze.com'
 const BRAZE_API_KEY = process.env.BRAZE_API_KEY || ''
-const VOUCHER_CANVAS_ID = '91e0ba33-7878-45a9-aa62-bcc9b1437a44'
+const VOUCHER_CANVAS_ID = '74044200-f7c9-4932-aa6e-4f2e7073687f'
+
+const COUNTRY_CODE_MAP: Record<string, string> = {
+  UAE: 'AE', Kuwait: 'KW', Iraq: 'IQ', Bahrain: 'BH',
+  Egypt: 'EG', Qatar: 'QA', Jordan: 'JO', Oman: 'OM',
+}
+
+const CURRENCY_EN: Record<string, string> = {
+  AE: 'AED', KW: 'KWD', BH: 'BHD', QA: 'QR',
+  EG: 'EGP', IQ: 'IQD', JO: 'JD', OM: 'OMR',
+}
+
+const CURRENCY_AR: Record<string, string> = {
+  AE: 'درهم', KW: 'د.ك', BH: '.د.ب', QA: 'ر.ق',
+  EG: 'ج', IQ: 'د.ع', JO: 'د.ا', OM: 'ر.ع.',
+}
+
+const CYCLE_LABEL: Record<string, string> = {
+  weekly: 'wkly', biweekly: 'bwkly', monthly: 'mth', quarterly: 'qrt',
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +38,6 @@ export async function POST(req: NextRequest) {
 
     const sql = getDb()
 
-    // Validate code exists and is pending
     const codes = await sql`
       SELECT bc.*, c.credit_value, c.min_order_value, c.validity_days,
              c.discount_type, c.cycle_type, p.company_name, p.country, p.slug
@@ -31,73 +49,80 @@ export async function POST(req: NextRequest) {
     `
     const benefitCode = codes[0]
 
-    if (!benefitCode) {
-      return NextResponse.json({ error: 'Invalid code. Please check and try again.' }, { status: 404 })
-    }
-
-    if (benefitCode.status === 'redeemed') {
-      return NextResponse.json({ error: 'This code has already been redeemed.' }, { status: 409 })
-    }
-
-    if (benefitCode.status === 'expired') {
-      return NextResponse.json({ error: 'This code has expired.' }, { status: 410 })
-    }
-
+    if (!benefitCode) return NextResponse.json({ error: 'Invalid code. Please check and try again.' }, { status: 404 })
+    if (benefitCode.status === 'redeemed') return NextResponse.json({ error: 'This code has already been redeemed.' }, { status: 409 })
+    if (benefitCode.status === 'expired') return NextResponse.json({ error: 'This code has expired.' }, { status: 410 })
     if (new Date(benefitCode.expires_at) < new Date()) {
       await sql`UPDATE benefit_codes SET status = 'expired' WHERE id = ${benefitCode.id}`
       return NextResponse.json({ error: 'This code has expired.' }, { status: 410 })
     }
 
-    // Build campaign reference ID in talabat format
-    const countryMap: Record<string, string> = { UAE: 'ae', Kuwait: 'kw', Iraq: 'iq', Bahrain: 'bh', Egypt: 'eg', Qatar: 'qa' }
-    const countryCode = countryMap[benefitCode.country] || 'ae'
-    const cycleLabel: Record<string, string> = { weekly: 'wkly', biweekly: 'bwkly', monthly: 'mth', quarterly: 'qrt' }
-    const cycleKey = cycleLabel[benefitCode.cycle_type] || 'mth'
-    const startDate = new Date().toISOString().slice(2, 10).replace(/-/g, '')
+    // Dynamic values
+    const countryCode = COUNTRY_CODE_MAP[benefitCode.country] || 'AE'
+    const countryCodeLower = countryCode.toLowerCase()
+    const currEn = CURRENCY_EN[countryCode] || 'AED'
+    const currAr = CURRENCY_AR[countryCode] || 'درهم'
+    const creditValue = Number(benefitCode.credit_value)
+    const minOrderValue = Number(benefitCode.min_order_value) || 30
+    const validityDays = Number(benefitCode.validity_days) || 7
+    const discountValue = Math.round(creditValue * 100)
+    const cycleKey = CYCLE_LABEL[benefitCode.cycle_type] || 'mth'
+
+    // Dates
+    const now = new Date()
+    const startDate = now.toISOString().slice(2, 10).replace(/-/g, '')
     const endDateObj = new Date()
-    endDateObj.setDate(endDateObj.getDate() + (Number(benefitCode.validity_days) || 7))
+    endDateObj.setDate(endDateObj.getDate() + validityDays)
     const endDate = endDateObj.toISOString().slice(2, 10).replace(/-/g, '')
+
+    // Campaign reference ID
     const safePartner = benefitCode.company_name.replace(/[^a-zA-Z0-9]/g, '')
-    const campaignReferenceId = `other_rmo_${countryCode}_PartnerFunded_${safePartner}${benefitCode.credit_value}AED_${startDate}-${endDate}_vw_1x${benefitCode.credit_value}AED_all_${cycleKey}_bth`
+    const campaignReferenceId = `other_rmo_${countryCodeLower}_PartnerFunded_${safePartner}${creditValue}${currEn}_${startDate}-${endDate}_vw_1x${creditValue}${currEn}_all_${cycleKey}_bth`
 
-    const validTill = new Date()
-    validTill.setDate(validTill.getDate() + (Number(benefitCode.validity_days) || 7))
-    const validTillUTC = validTill.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
+    // Titles and T&Cs
+    const titleEn = `${currEn} ${creditValue} voucher from ${benefitCode.company_name}`
+    const titleAr = `${creditValue} ${currAr} من ${benefitCode.company_name}`
+    const tcsEn = `${currEn} ${creditValue} voucher from ${benefitCode.company_name}. Min. order ${currEn} ${minOrderValue}. Valid for ${validityDays} days.`
+    const tcsAr = `قسيمة ${creditValue} ${currAr} من ${benefitCode.company_name}. الحد الأدنى للطلب ${minOrderValue} ${currAr}. صالحة لمدة ${validityDays} أيام.`
 
-    const titleEn = `AED ${benefitCode.credit_value} voucher from ${benefitCode.company_name}`
-    const titleAr = `${benefitCode.credit_value} درهم من ${benefitCode.company_name}`
+    // Braze payload
+    const brazeBody = {
+      canvas_id: VOUCHER_CANVAS_ID,
+      recipients: [{ external_user_id: talabatEmail }],
+      canvas_entry_properties: {
+        days_expiration: validityDays,
+        discountValue: discountValue,
+        discountType: benefitCode.discount_type || 'FLAT',
+        maxDiscountCap: creditValue,
+        minOrderValue: minOrderValue,
+        country: countryCode,
+        campaignReferenceId: campaignReferenceId,
+        talabatSharePercentage: 100,
+        allowDuplicates: false,
+        title_En: titleEn,
+        title_Ar: titleAr,
+        termsAndConditions_en: tcsEn,
+        termsAndConditions_ar: tcsAr,
+        deeplink: `talabat://qcommerce/branches/nearest_darkstore?shopClickOrigin=deeplink&eventOrigin=deeplink`,
+        partner_name: benefitCode.company_name,
+        benefit_code: benefitCode.code,
+      },
+      broadcast: false,
+    }
 
-    // Trigger Braze voucher canvas
+    console.log('Braze payload:', JSON.stringify(brazeBody))
+
     const brazeRes = await fetch(`${BRAZE_API_URL}/canvas/trigger/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${BRAZE_API_KEY}`
       },
-      body: JSON.stringify({
-        canvas_id: VOUCHER_CANVAS_ID,
-        recipients: [{ external_user_id: talabatEmail }],
-        canvas_entry_properties: {
-          discount: Math.round(Number(benefitCode.credit_value) * 100),
-          discount_type: benefitCode.discount_type || 'FLAT',
-          max_discount: Number(benefitCode.credit_value),
-          min_order_value: Number(benefitCode.min_order_value) || 30,
-          validity_voucher: validTillUTC,
-          country_credit_id: countryCode.toUpperCase(),
-          campaign_reference_id: campaignReferenceId,
-          title_voucher_en: titleEn,
-          title_voucher_ar: titleAr,
-          tcs_voucher_en: `AED ${benefitCode.credit_value} voucher from ${benefitCode.company_name} - valid till ${validTill.toISOString().slice(0, 10)}`,
-          tcs_voucher_ar: `قسيمة ${benefitCode.credit_value} درهم من ${benefitCode.company_name} - صالحة حتى ${validTill.toISOString().slice(0, 10)}`,
-          deeplink_voucher: 'talabat://?c=ae',
-          brandGroupid: '',
-        },
-        broadcast: false,
-      })
+      body: JSON.stringify(brazeBody)
     })
 
     const brazeData = await brazeRes.json()
-    console.log('Braze voucher trigger:', JSON.stringify(brazeData))
+    console.log('Braze response:', JSON.stringify(brazeData))
 
     if (!brazeRes.ok) {
       console.error('Braze error:', brazeData)
@@ -107,9 +132,7 @@ export async function POST(req: NextRequest) {
     // Mark code as redeemed
     await sql`
       UPDATE benefit_codes
-      SET status = 'redeemed',
-          redeemed_at = NOW(),
-          claimed_by_email = ${talabatEmail}
+      SET status = 'redeemed', redeemed_at = NOW(), claimed_by_email = ${talabatEmail}
       WHERE id = ${benefitCode.id}
     `
 

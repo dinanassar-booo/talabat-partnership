@@ -85,10 +85,36 @@ export async function POST(req: NextRequest) {
     const tcsEn = `${currEn} ${creditValue} voucher from ${benefitCode.company_name}. Min. order ${currEn} ${minOrderValue}. Valid for ${validityDays} days.`
     const tcsAr = `قسيمة ${creditValue} ${currAr} من ${benefitCode.company_name}. الحد الأدنى للطلب ${minOrderValue} ${currAr}. صالحة لمدة ${validityDays} أيام.`
 
+        // Look up user's external_user_id by email
+    let externalUserId = talabatEmail // fallback
+    try {
+      const lookupRes = await fetch(`${BRAZE_API_URL}/users/export/ids`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${BRAZE_API_KEY}`
+        },
+        body: JSON.stringify({
+          email_address: talabatEmail,
+          fields_to_export: ['external_id']
+        })
+      })
+      const lookupData = await lookupRes.json()
+      console.log('Braze user lookup:', JSON.stringify(lookupData))
+      if (lookupData.users?.length > 0 && lookupData.users[0].external_id) {
+        externalUserId = lookupData.users[0].external_id
+        console.log('Found external_user_id:', externalUserId)
+      } else {
+        console.log('User not found in Braze, using email as fallback')
+      }
+    } catch (err) {
+      console.error('Braze user lookup failed:', err)
+    }
+
     // Braze payload
     const brazeBody = {
       canvas_id: VOUCHER_CANVAS_ID,
-      recipients: [{ external_user_id: talabatEmail }],
+      recipients: [{ external_user_id: externalUserId }],
       canvas_entry_properties: {
         days_expiration: validityDays,
         discountValue: discountValue,

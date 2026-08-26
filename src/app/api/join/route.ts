@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         canvas_id: EMAIL_CANVAS_ID,
-        recipients: [{ attributes: { email: companyEmail } }],
+        recipients: [{ external_user_id: '27608673' }],
         canvas_entry_properties: {
           benefit_code: code.code,
           partner_name: partner.company_name,

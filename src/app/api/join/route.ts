@@ -4,12 +4,7 @@ import crypto from 'crypto'
 
 const BRAZE_API_URL = process.env.BRAZE_API_URL || 'https://rest.iad-01.braze.com'
 const BRAZE_API_KEY = process.env.BRAZE_API_KEY || ''
-
-// PLACEHOLDER: Replace with real Braze email canvas ID for verification email
-const VERIFICATION_EMAIL_CANVAS_ID = '74044200-f7c9-4932-aa6e-4f2e7073687f'
-
-// PLACEHOLDER: Replace with real IAM deeplink format
-const IAM_DEEPLINK = 'talabat://iam/benefit-claim'
+const EMAIL_CANVAS_ID = '74044200-f7c9-4932-aa6e-4f2e7073687f'
 
 function hashEmployeeId(partnerId: string, employeeId: string): string {
   return crypto.createHmac('sha256', partnerId).update(employeeId.trim().toLowerCase()).digest('hex')
@@ -23,7 +18,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'All fields required' }, { status: 400 })
     }
 
-    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyEmail)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
     }
@@ -43,11 +37,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if this employee already claimed a code
+    // Check if already claimed
     const empIdHash = hashEmployeeId(partner.id, employeeId)
     const alreadyClaimed = await sql`
-      SELECT id FROM benefit_codes 
-      WHERE partner_id = ${partner.id} 
+      SELECT id FROM benefit_codes
+      WHERE partner_id = ${partner.id}
       AND claimed_by_employee_id = ${empIdHash}
       AND status = 'claimed'
       LIMIT 1
@@ -56,9 +50,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have already claimed a benefit code' }, { status: 409 })
     }
 
-    // Find an available code from any active campaign for this partner
+    // Find available code from active campaign
     const availableCodes = await sql`
-      SELECT bc.*, c.name as campaign_name, c.credit_value, c.validity_days
+      SELECT bc.*, c.name as campaign_name, c.credit_value, c.validity_days,
+             c.min_order_value, c.discount_type, c.cycle_type
       FROM benefit_codes bc
       JOIN campaigns c ON bc.campaign_id = c.id
       WHERE bc.partner_id = ${partner.id}
@@ -68,61 +63,59 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `
     if (availableCodes.length === 0) {
-      return NextResponse.json({ error: 'No benefit codes available at this time. Please contact your HR team.' }, { status: 404 })
+      return NextResponse.json({ error: 'No benefit codes available. Please contact your HR team.' }, { status: 404 })
     }
 
     const code = availableCodes[0]
 
     // Assign code to this employee
     await sql`
-      UPDATE benefit_codes 
-      SET 
-        status = 'claimed',
-        claimed_by_email = ${companyEmail},
-        claimed_by_employee_id = ${empIdHash},
-        claimed_at = NOW()
+      UPDATE benefit_codes
+      SET status = 'claimed',
+          claimed_by_email = ${companyEmail},
+          claimed_by_employee_id = ${empIdHash},
+          claimed_at = NOW()
       WHERE id = ${code.id}
     `
 
-   // Sync employee to Braze — set partnership attribute
-    await fetch(`${BRAZE_API_URL}/users/track`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
-      body: JSON.stringify({
-        attributes: [{
-          email: companyEmail,
-          partnership_id: slug,
-          partner_name: partner.company_name,
-          _update_existing_only: true,
-        }]
-      })
-    }).catch(console.error)
+    // Build dynamic values for email
+    const countryCodeMap: Record<string, string> = { UAE: 'AE', Kuwait: 'KW', Iraq: 'IQ', Bahrain: 'BH', Egypt: 'EG', Qatar: 'QA', Jordan: 'JO', Oman: 'OM' }
+    const currencyMap: Record<string, string> = { AE: 'AED', KW: 'KWD', BH: 'BHD', QA: 'QR', EG: 'EGP', IQ: 'IQD', JO: 'JD', OM: 'OMR' }
+    const countryCode = countryCodeMap[partner.country] || 'AE'
+    const currency = currencyMap[countryCode] || 'AED'
+    const creditValue = Number(code.credit_value)
+    const validityDays = Number(code.validity_days) || 7
+    const minOrderValue = Number(code.min_order_value) || 30
+    const redeemUrl = `https://talabat-partnership.vercel.app/redeem?code=${encodeURIComponent(code.code)}`
 
-    // PLACEHOLDER: Trigger Braze verification email canvas
-    // This sends the employee an email with their code + IAM deeplink
-    await fetch(`${BRAZE_API_URL}/messages/send`, {
+    // Trigger Braze canvas — sends email with code + redeem link
+    const brazeRes = await fetch(`${BRAZE_API_URL}/canvas/trigger/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BRAZE_API_KEY}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${BRAZE_API_KEY}`
+      },
       body: JSON.stringify({
-        external_user_ids: [companyEmail],
-        messages: {
-          email: {
-            app_id: process.env.BRAZE_APP_ID || '',
-            subject: `Your ${partner.company_name} benefit is ready 🎁`,
-            from: process.env.BRAZE_FROM_EMAIL || 'benefits@talabat.com',
-            body: `Your benefit code is: ${code.code}`,
-            reply_to: 'no-reply@talabat.com',
-          }
-        },
-        trigger_properties: {
+        canvas_id: EMAIL_CANVAS_ID,
+        recipients: [{ attributes: { email: companyEmail } }],
+        canvas_entry_properties: {
           benefit_code: code.code,
           partner_name: partner.company_name,
-          iam_deeplink: IAM_DEEPLINK,
-          credit_value: code.credit_value,
-          validity_days: code.validity_days,
+          title_En: `${currency} ${creditValue} voucher from ${partner.company_name}`,
+          title_Ar: `${creditValue} من ${partner.company_name}`,
+          days_expiration: validityDays,
+          minOrderValue: minOrderValue,
+          credit_value: creditValue,
+          currency: currency,
+          country: countryCode,
+          redeem_url: redeemUrl,
+          deeplink_voucher: `talabat://?c=${countryCode.toLowerCase()}`,
         }
       })
-    }).catch(console.error)
+    })
+
+    const brazeData = await brazeRes.json()
+    console.log('Braze email trigger:', JSON.stringify(brazeData))
 
     return NextResponse.json({
       ok: true,

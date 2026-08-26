@@ -132,10 +132,10 @@ export default function JoinPage() {
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>How to claim your benefit</div>
             {[
-              { title: 'Sign up below', desc: 'Enter your work email and employee ID to verify your eligibility.' },
-              { title: 'Check your email', desc: 'You'll receive a unique benefit code on your work email.' },
-              { title: 'Open the talabat app', desc: 'Use the link in your email to open talabat and paste your code.' },
-              { title: 'Enjoy your benefit', desc: 'Your voucher will be added to your talabat wallet instantly.' },
+              { title: 'Sign up below', desc: 'Enter your work email and employee ID to verify your eligibility." },
+              { title: 'Check your email', desc: "You'll receive a unique benefit code on your work email." },
+              { title: 'Open the talabat app', desc: 'Use the link in your email to open talabat and paste your code." },
+              { title: 'Enjoy your benefit', desc: 'Your voucher will be added to your talabat wallet instantly." },
             ].map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#FF6B00', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
